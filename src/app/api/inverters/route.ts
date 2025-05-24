@@ -10,9 +10,18 @@ import {
 
 export async function GET() {
   try {
-    const { query, values } = buildInverterQuery();
-    const [rows] = await pool.execute(query, values);
-    return NextResponse.json({ data: rows });
+    const [rows] = await pool.execute(`
+      SELECT 
+        i.*,
+        s.name as station_name,
+        s.project_id,
+        p.name as project_name
+      FROM inverter i
+      LEFT JOIN station s ON i.station_id = s.id
+      LEFT JOIN project p ON s.project_id = p.id
+      ORDER BY i.id ASC
+    `);
+    return NextResponse.json(rows);
   } catch (error) {
     console.error('Error fetching inverters:', error);
     return NextResponse.json(
@@ -31,19 +40,6 @@ export async function POST(request: Request) {
     if (!data.inverter_id_platform) {
       return NextResponse.json(
         { error: 'Missing required field: inverter_id_platform' },
-        { status: 400 }
-      );
-    }
-
-    // Check if inverter platform ID already exists
-    const [existingInverters] = await pool.execute(
-      'SELECT id FROM inverter WHERE inverter_id_platform = ?',
-      [data.inverter_id_platform]
-    );
-
-    if ((existingInverters as any[]).length > 0) {
-      return NextResponse.json(
-        { error: 'Inverter platform ID already exists' },
         { status: 400 }
       );
     }
@@ -90,21 +86,6 @@ export async function PUT(request: Request) {
         { error: 'Missing required field: id' },
         { status: 400 }
       );
-    }
-
-    // If updating inverter_id_platform, check if it already exists
-    if (data.inverter_id_platform) {
-      const [existingInverters] = await pool.execute(
-        'SELECT id FROM inverter WHERE inverter_id_platform = ? AND id != ?',
-        [data.inverter_id_platform, id]
-      );
-
-      if ((existingInverters as any[]).length > 0) {
-        return NextResponse.json(
-          { error: 'Inverter platform ID already exists' },
-          { status: 400 }
-        );
-      }
     }
 
     // Validate station_id if provided

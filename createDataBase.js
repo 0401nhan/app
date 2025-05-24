@@ -70,15 +70,7 @@ async function createDatabase() {
         FOREIGN KEY (station_owner_id) REFERENCES user(id) ON DELETE SET NULL
       );
 
-      CREATE TABLE IF NOT EXISTS inverter (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        inverter_id_platform VARCHAR(255) UNIQUE,
-        model VARCHAR(255),
-        station_id INT,
-        max_ac_capacity FLOAT,
-        max_dc_capacity FLOAT,
-        FOREIGN KEY (station_id) REFERENCES station(id) ON DELETE CASCADE
-      );
+            CREATE TABLE IF NOT EXISTS inverter (        id INT AUTO_INCREMENT PRIMARY KEY,        inverter_id_platform VARCHAR(255),        model VARCHAR(255),        station_id INT,        max_ac_capacity FLOAT,        max_dc_capacity FLOAT,        FOREIGN KEY (station_id) REFERENCES station(id) ON DELETE CASCADE      );
 
       CREATE TABLE IF NOT EXISTS inverter_realtime (
         id INT AUTO_INCREMENT PRIMARY KEY,

@@ -29,14 +29,6 @@ const InverterForm: React.FC<InverterFormProps> = ({ inverters, stations, onSubm
       newErrors.inverter_id_platform = 'Inverter Platform ID is required';
     }
 
-    // Check unique inverter_id_platform
-    const existingInverter = inverters.find(
-      inv => inv.inverter_id_platform === formData.inverter_id_platform && inv.id !== formData.id
-    );
-    if (existingInverter) {
-      newErrors.inverter_id_platform = 'This Platform ID already exists';
-    }
-
     if (!formData.model.trim()) {
       newErrors.model = 'Model is required';
     }
@@ -78,7 +70,6 @@ const InverterForm: React.FC<InverterFormProps> = ({ inverters, stations, onSubm
     } else {
       onSubmit(submitData);
     }
-    resetForm();
   };
 
   const handleEdit = (inverter: any) => {
