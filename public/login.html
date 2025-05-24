@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <base href="./">
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, shrink-to-fit=no">
+    <meta name="description" content="CoreUI - Bootstrap Admin Template">
+    <meta name="author" content="Łukasz Holeczek">
+    <meta name="keyword" content="Bootstrap,Admin,Template,SCSS,HTML,RWD,Dashboard">
+    <title>Login Electricbird Platform</title>
+    <link rel="icon" type="image/png" sizes="192x192" href="assets/logo/sol-logo-mini.png">
+    <link rel="stylesheet" href="vendors/simplebar/css/simplebar.css">
+    <link href="css/style.css" rel="stylesheet">
+  </head>
+  <body>
+    <div class="min-vh-100 d-flex flex-row align-items-center">
+      <div class="container">
+        <div class="row justify-content-center">
+          <div class="col-lg-6">
+            <div class="card-group d-block d-md-flex row">
+              <div class="card col-md-7 p-4 mb-0">
+                <div class="card-body">
+                  <h1>Login</h1>
+                  <p class="text-body-secondary">Sign In to your account</p>
+                  <!-- Form đăng nhập -->
+                  <form id="login-form">
+                    <div class="input-group mb-3">
+                      <span class="input-group-text">
+                        <svg class="icon">
+                          <use xlink:href="vendors/@coreui/icons/svg/free.svg#cil-user"></use>
+                        </svg>
+                      </span>
+                      <input id="username" class="form-control" type="text" placeholder="Username" required>
+                    </div>
+                    <div class="input-group mb-4">
+                      <span class="input-group-text">
+                        <svg class="icon">
+                          <use xlink:href="vendors/@coreui/icons/svg/free.svg#cil-lock-locked"></use>
+                        </svg>
+                      </span>
+                      <input id="password" class="form-control" type="password" placeholder="Password" required>
+                    </div>
+                    <div class="row">
+                      <div class="col-6">
+                        <button class="btn btn-primary px-4" type="submit">Login</button>
+                      </div>
+                      <div class="col-6 text-end">
+                        <button class="btn btn-link px-0" type="button">ID:admin/PW:admin</button>
+                      </div>
+                    </div>
+                  </form>
+
+                  <!-- Thông báo lỗi sẽ hiển thị ở đây -->
+                  <div id="error-message" class="text-danger mt-3" style="display: none;">
+                    Invalid credentials. Please try again.
+                  </div>
+                </div>
+              </div>
+              <div style="display: none;" class="card col-md-5 text-white bg-primary py-5">
+                <div class="card-body text-center">
+                  <div>
+                    <h2>Sign up</h2>
+                    <p>Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.</p>
+                    <button class="btn btn-lg btn-outline-light mt-3" type="button">Register Now!</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CoreUI and necessary plugins-->
+    <script src="vendors/@coreui/coreui-pro/js/coreui.bundle.min.js"></script>
+    <script src="vendors/simplebar/js/simplebar.min.js"></script>
+    <script src="js/config.js"></script>
+    <script src="js/color-modes.js"></script>
+
+    <script>
+      // Danh sách các trạm
+      const stations = {
+        1: 'RentalFactory1',
+        2: 'RentalFactory3',
+        3: 'Kolmar',
+        4: 'KYC',
+        5: 'Nagae',
+        6: 'SettsuCarton',
+        7: 'Pegasus'
+      };
+
+      // Lắng nghe sự kiện gửi form đăng nhập
+      document.getElementById('login-form').addEventListener('submit', function(event) {
+        event.preventDefault();  // Ngừng hành động mặc định của form (không reload trang)
+        
+        // Lấy giá trị từ các trường trong form
+        const username = document.getElementById('username').value;
+        const password = document.getElementById('password').value;
+
+        // Gửi request POST đến API login
+        fetch('/api/login', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ username, password }),  // Chuyển đổi dữ liệu thành JSON
+        })
+        .then(response => {
+          if (!response.ok) {
+            throw new Error('Invalid credentials');  // Nếu đăng nhập thất bại
+          }
+          return response.json();  // Parse JSON response
+        })
+        .then(data => {
+          console.log('Debug - Login response:', data);
+          const user = data.user;
+          
+          // Chuyển hướng dựa trên vai trò
+          if (user.role === 'station_owner' && user.station_id && stations[user.station_id]) {
+            window.location.href = `/station/${stations[user.station_id]}`;
+          } else if (user.role === 'admin' || user.role === 'project_owner') {
+            window.location.href = '/';  // Changed from '/overview' to '/'
+          } else if (user.role === 'operator') {
+            window.location.href = '/station/RentalFactory1'; // hoặc station mặc định bạn muốn
+          } else {
+            window.location.href = '/login';
+          }
+        })
+        .catch(error => {
+          // Hiển thị thông báo lỗi dưới form
+          const errorMessageElement = document.getElementById('error-message');
+          errorMessageElement.style.display = 'block';  // Hiển thị thông báo lỗi
+          errorMessageElement.innerHTML = error.message;  // Cập nhật nội dung thông báo
+        });
+      });
+    </script>
+  </body>
+</html>

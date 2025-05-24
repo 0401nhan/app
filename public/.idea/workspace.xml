@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ChangeListManager">
+    <list default="true" id="9153dd82-be31-4502-a40b-10b32849b4b7" name="Default Changelist" comment="" />
+    <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="ComposerSettings">
+    <execution>
+      <executable />
+    </execution>
+  </component>
+  <component name="FileTemplateManagerImpl">
+    <option name="RECENT_TEMPLATES">
+      <list>
+        <option value="JavaScript File" />
+      </list>
+    </option>
+  </component>
+  <component name="ProjectId" id="2u4XPax8yR58inXBDXOGZTIWpZ8" />
+  <component name="PropertiesComponent">
+    <property name="WebServerToolWindowFactoryState" value="false" />
+    <property name="aspect.path.notification.shown" value="true" />
+    <property name="last_opened_file_path" value="$PROJECT_DIR$/../Website" />
+    <property name="project.structure.last.edited" value="Project" />
+    <property name="project.structure.proportion" value="0.0" />
+    <property name="project.structure.side.proportion" value="0.0" />
+    <property name="settings.editor.selected.configurable" value="preferences.pluginManager" />
+  </component>
+  <component name="RecentsManager">
+    <key name="CopyFile.RECENT_KEYS">
+      <recent name="C:\SOL-CMS" />
+    </key>
+  </component>
+  <component name="RunDashboard">
+    <option name="ruleStates">
+      <list>
+        <RuleState>
+          <option name="name" value="ConfigurationTypeDashboardGroupingRule" />
+        </RuleState>
+        <RuleState>
+          <option name="name" value="StatusDashboardGroupingRule" />
+        </RuleState>
+      </list>
+    </option>
+  </component>
+  <component name="SvnConfiguration">
+    <configuration />
+  </component>
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="9153dd82-be31-4502-a40b-10b32849b4b7" name="Default Changelist" comment="" />
+      <created>1741508796605</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1741508796605</updated>
+      <workItem from="1741508797827" duration="1214000" />
+      <workItem from="1741570885148" duration="1773000" />
+      <workItem from="1741572683545" duration="1480000" />
+      <workItem from="1741574587791" duration="1791000" />
+      <workItem from="1741576580953" duration="1926000" />
+      <workItem from="1741578535692" duration="2071000" />
+      <workItem from="1741580707318" duration="2013000" />
+      <workItem from="1741583094806" duration="1052000" />
+      <workItem from="1741599991291" duration="1122000" />
+      <workItem from="1741602921601" duration="1777000" />
+      <workItem from="1741604730541" duration="363000" />
+      <workItem from="1741605109488" duration="27000" />
+      <workItem from="1741605147784" duration="12812000" />
+      <workItem from="1741661419240" duration="4716000" />
+      <workItem from="1742116926451" duration="3662000" />
+      <workItem from="1743040149302" duration="2068000" />
+      <workItem from="1743388069828" duration="1230000" />
+    </task>
+    <servers />
+  </component>
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="1" />
+  </component>
+</project>
