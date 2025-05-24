@@ -22,12 +22,16 @@ interface DataTreeProps {
 const DataTree: React.FC<DataTreeProps> = ({ data, onNodeClick }) => {
   const [expandedNodes, setExpandedNodes] = useState<number[]>([]);
 
-  const toggleNode = (nodeId: number) => {
-    setExpandedNodes(prev => 
-      prev.includes(nodeId) 
-        ? prev.filter(id => id !== nodeId)
-        : [...prev, nodeId]
-    );
+  const toggleNode = (nodeId: number, node: TreeNode) => {
+    setExpandedNodes(prev => {
+      if (prev.includes(nodeId)) {
+        // When closing a node, only remove that specific node's ID
+        return prev.filter(id => id !== nodeId);
+      } else {
+        // When opening a node, add its ID and keep all other expanded nodes
+        return [...prev, nodeId];
+      }
+    });
   };
 
   // Build tree structure from flat data
@@ -138,7 +142,7 @@ const DataTree: React.FC<DataTreeProps> = ({ data, onNodeClick }) => {
         <div 
           className="d-flex align-items-center py-2 px-3 hover-bg-light cursor-pointer"
           onClick={() => {
-            if (hasChildren) toggleNode(node.id);
+            if (hasChildren) toggleNode(node.id, node);
             if (onNodeClick) onNodeClick(node);
           }}
           style={{ cursor: 'pointer' }}

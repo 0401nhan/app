@@ -66,7 +66,7 @@ const SettingsPage = () => {
         }
         if (projectsData.data) setProjects(projectsData.data);
         if (stationsData.data) setStations(stationsData.data);
-        if (invertersData.data) setInverters(invertersData.data);
+        setInverters(invertersData); // Inverters API trả về trực tiếp mảng
         if (pvModulesData.data) setPvModules(pvModulesData.data);
 
       } catch (error) {
@@ -291,8 +291,6 @@ const SettingsPage = () => {
       <div className="row">
         <div className="col-12">
           <h1 className="mb-4">Settings</h1>
-
-          
 
           {/* Forms Section */}
           <div>
