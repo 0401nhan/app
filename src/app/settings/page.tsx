@@ -7,6 +7,7 @@ import ProjectForm from './components/ProjectForm';
 import StationForm from './components/StationForm';
 import InverterForm from './components/InverterForm';
 import PVModuleForm from './components/PVModuleForm';
+import MPPTForm from './components/MPPTForm';
 import DataTree from './components/DataTree';
 import DataOverview from './components/DataOverview';
 
@@ -17,6 +18,7 @@ const SettingsPage = () => {
   const [stations, setStations] = useState<any[]>([]);
   const [inverters, setInverters] = useState<any[]>([]);
   const [pvModules, setPvModules] = useState<any[]>([]);
+  const [mppts, setMppts] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState('users');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -36,24 +38,26 @@ const SettingsPage = () => {
       setError('');
       try {
         // Lấy tất cả dữ liệu cần thiết
-        const [usersRes, projectsRes, stationsRes, invertersRes, pvModulesRes] = await Promise.all([
+        const [usersRes, projectsRes, stationsRes, invertersRes, pvModulesRes, mpptsRes] = await Promise.all([
           fetch(`/api/users?page=${pagination.page}&limit=${pagination.limit}`),
           fetch('/api/projects'),
           fetch('/api/stations'),
           fetch('/api/inverters'),
           fetch('/api/pv-module'),
+          fetch('/api/mppt'),
         ]);
 
-        if (!usersRes.ok || !projectsRes.ok || !stationsRes.ok || !invertersRes.ok || !pvModulesRes.ok) {
+        if (!usersRes.ok || !projectsRes.ok || !stationsRes.ok || !invertersRes.ok || !pvModulesRes.ok || !mpptsRes.ok) {
           throw new Error('Failed to fetch data');
         }
 
-        const [usersData, projectsData, stationsData, invertersData, pvModulesData] = await Promise.all([
+        const [usersData, projectsData, stationsData, invertersData, pvModulesData, mpptsData] = await Promise.all([
           usersRes.json(),
           projectsRes.json(),
           stationsRes.json(),
           invertersRes.json(),
           pvModulesRes.json(),
+          mpptsRes.json(),
         ]);
 
         if (usersData.data) {
@@ -68,6 +72,7 @@ const SettingsPage = () => {
         if (stationsData.data) setStations(stationsData.data);
         setInverters(invertersData); // Inverters API trả về trực tiếp mảng
         if (pvModulesData.data) setPvModules(pvModulesData.data);
+        if (mpptsData.data) setMppts(mpptsData.data);
 
       } catch (error) {
         console.error('Fetch error:', error);
@@ -98,6 +103,9 @@ const SettingsPage = () => {
           break;
         case 'pv-modules':
           endpoint = '/api/pv-module';
+          break;
+        case 'mppts':
+          endpoint = '/api/mppt';
           break;
         default:
           throw new Error('Invalid form type');
@@ -134,6 +142,9 @@ const SettingsPage = () => {
           case 'pv-modules':
             setPvModules(prev => [...prev, newData]);
             break;
+          case 'mppts':
+            setMppts(prev => [...prev, newData]);
+            break;
         }
       }
       
@@ -163,6 +174,9 @@ const SettingsPage = () => {
           break;
         case 'pv-modules':
           endpoint = `/api/pv-module/${data.id}`;
+          break;
+        case 'mppts':
+          endpoint = `/api/mppt/${data.id}`;
           break;
         default:
           throw new Error('Invalid form type');
@@ -195,6 +209,9 @@ const SettingsPage = () => {
           break;
         case 'pv-modules':
           setPvModules(prev => prev.map(item => item.id === data.id ? data : item));
+          break;
+        case 'mppts':
+          setMppts(prev => prev.map(item => item.id === data.id ? data : item));
           break;
       }
 
@@ -229,6 +246,9 @@ const SettingsPage = () => {
         case 'pv-modules':
           endpoint = `/api/pv-module/${data.id}`;
           break;
+        case 'mppts':
+          endpoint = `/api/mppt/${data.id}`;
+          break;
         default:
           throw new Error('Invalid form type');
       }
@@ -258,6 +278,9 @@ const SettingsPage = () => {
           break;
         case 'pv-modules':
           setPvModules(prev => prev.filter(item => item.id !== data.id));
+          break;
+        case 'mppts':
+          setMppts(prev => prev.filter(item => item.id !== data.id));
           break;
       }
 
@@ -354,6 +377,19 @@ const SettingsPage = () => {
                     onSubmit={(data) => handleSubmit('pv-modules', data)}
                     onUpdate={(data) => handleUpdate('pv-modules', data)}
                     onDelete={(data) => handleDelete('pv-modules', data)}
+                  />
+                </div>
+              </Tab>
+
+              <Tab eventKey="mppts" title="MPPTs">
+                <div className="p-3">
+                  <MPPTForm 
+                    stations={stations}
+                    inverters={inverters}
+                    mppts={mppts}
+                    onSubmit={(data) => handleSubmit('mppts', data)}
+                    onUpdate={(data) => handleUpdate('mppts', data)}
+                    onDelete={(data) => handleDelete('mppts', data)}
                   />
                 </div>
               </Tab>

@@ -107,6 +107,7 @@ async function createDatabase() {
       CREATE TABLE IF NOT EXISTS MPPT (
         id INT AUTO_INCREMENT PRIMARY KEY,
         inverter_id INT,
+        mppt_platform_id VARCHAR(255),
         timestamp DATETIME,
         status VARCHAR(255),
         voltage FLOAT,

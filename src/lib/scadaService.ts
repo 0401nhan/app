@@ -16,6 +16,7 @@ interface Station {
     name: string;
     id_station_platform: string;
     project_id: number;
+    id_station_platform1?: string;
 }
 
 interface ScadaDataPoint {
@@ -63,7 +64,7 @@ class ScadaService {
         const connection = await mysql.createConnection(this.dbConfig);
         try {
             const [rows] = await connection.execute(
-                'SELECT id, name, id_station_platform FROM station WHERE project_id = ?',
+                'SELECT id, name, id_station_platform, id_station_platform1 FROM station WHERE project_id = ?',
                 [projectId]
             );
             return rows as Station[];
@@ -115,7 +116,7 @@ class ScadaService {
 
             await this.loginWithProjectCredentials(project);
 
-            const stationData = await this.fetchStationData(station.id_station_platform);
+            const stationData = await this.fetchStationData(station);
             console.log('📊 Dữ liệu station:', stationData);
 
             await this.saveStationData(connection, station.id, stationData);
@@ -164,18 +165,21 @@ class ScadaService {
         }
     }
 
-    private generateStationRequestData(stationId: string): string[] {
+    private generateStationRequestData(stationId: string, stationPlatformId1: string | null): string[] {
+        // Xác định prefix cho PowerMeter dựa vào stationId
+        const powerMeterPrefix = ['Project1', 'Project2'].includes(stationId) ? 'PowerMeter' : 'SolarPowerMeter';
+
         return [
             `ITN${stationId}Common.DailyEnergy`,
-            `ITN${stationId}Common.MonthlyEnergy`,
-            `ITN${stationId}Common.YearlyEnergy`,
-            `${stationId}PowerMeter.ActivePower`,
-            `${stationId}PowerMeter.ReactivePower`,
-            `${stationId}PowerMeter.TotalEnergy`,
-            `${stationId}Weather.AmbientTemp`,
-            `${stationId}Weather.Irradiation`,
-            `${stationId}Weather.PVmoduleTemp1`,
-            `${stationId}Weather.PVmoduleTemp2`
+            `${stationId}${powerMeterPrefix}.ActivePower`,
+            `${stationId}${powerMeterPrefix}.ReactivePower`,
+            `WetherStation${stationPlatformId1 || stationId}.AmbientTemp`,
+            `WetherStation${stationPlatformId1 || stationId}.PVmoduleTemp1`,
+            `WetherStation${stationPlatformId1 || stationId}.PVmoduleTemp2`,
+            `WetherStation${stationPlatformId1 || stationId}.Irradiation`,
+            `ITN${stationId}Common.ExcessPower`,
+            `ITN${stationId}Common.PurchasedPower`,
+            `${stationId}SolarPanelMainCB.ON`
         ];
     }
 
@@ -183,8 +187,22 @@ class ScadaService {
         return parseFloat(value) || 0;
     }
 
-    private async fetchStationData(stationPlatformId: string) {
-        const requestData = this.generateStationRequestData(stationPlatformId);
+    private async fetchStationData(station: Station) {
+        const requestData = this.generateStationRequestData(
+            station.id_station_platform, 
+            station.id_station_platform1 || null
+        );
+
+        // Thêm tag ACB cho Project3 và Project6
+        if (['Project3', 'Project6'].includes(station.id_station_platform)) {
+            requestData.push(
+                `${station.id_station_platform}SolarPanelMainCB1.ON`,
+                `${station.id_station_platform}SolarPanelMainCB2.ON`
+            );
+        } else {
+            requestData.push(`${station.id_station_platform}SolarPanelMainCB.ON`);
+        }
+
         const response = await this.fetchDataFromScada(requestData);
 
         const getValue = (name: string) => {
@@ -192,65 +210,89 @@ class ScadaService {
             return point ? this.parseScadaValue(point.Value) : 0;
         };
 
+        // Xác định prefix cho PowerMeter
+        const powerMeterPrefix = ['Project1', 'Project2'].includes(station.id_station_platform) 
+            ? 'PowerMeter' 
+            : 'SolarPowerMeter';
+
+        // Xử lý ACB status đặc biệt cho Project3 và Project6
+        let acb_status = 'OFF';
+        if (['Project3', 'Project6'].includes(station.id_station_platform)) {
+            const cb1Status = getValue(`${station.id_station_platform}SolarPanelMainCB1.ON`);
+            const cb2Status = getValue(`${station.id_station_platform}SolarPanelMainCB2.ON`);
+            acb_status = (cb1Status === 1 && cb2Status === 1) ? 'ON' : 'OFF';
+        } else {
+            acb_status = getValue(`${station.id_station_platform}SolarPanelMainCB.ON`) === 1 ? 'ON' : 'OFF';
+        }
+
         return {
-            power_active: getValue(`${stationPlatformId}PowerMeter.ActivePower`),
-            power_reactive: getValue(`${stationPlatformId}PowerMeter.ReactivePower`),
-            energy: getValue(`${stationPlatformId}PowerMeter.TotalEnergy`),
-            daily_energy: getValue(`ITN${stationPlatformId}Common.DailyEnergy`),
-            monthly_energy: getValue(`ITN${stationPlatformId}Common.MonthlyEnergy`),
-            yearly_energy: getValue(`ITN${stationPlatformId}Common.YearlyEnergy`),
-            ambient_temperature: getValue(`${stationPlatformId}Weather.AmbientTemp`),
-            pvmodule_temperature1: getValue(`${stationPlatformId}Weather.PVmoduleTemp1`),
-            pvmodule_temperature2: getValue(`${stationPlatformId}Weather.PVmoduleTemp2`),
-            irradiation: getValue(`${stationPlatformId}Weather.Irradiation`)
+            power_active: getValue(`${station.id_station_platform}${powerMeterPrefix}.ActivePower`),
+            power_reactive: getValue(`${station.id_station_platform}${powerMeterPrefix}.ReactivePower`),
+            energy: getValue(`ITN${station.id_station_platform}Common.DailyEnergy`),
+            pr: 0, // Tạm thời chưa có
+            ambient_temperature: getValue(`WetherStation${station.id_station_platform1 || station.id_station_platform}.AmbientTemp`),
+            pvmodule_temperature1: getValue(`WetherStation${station.id_station_platform1 || station.id_station_platform}.PVmoduleTemp1`),
+            pvmodule_temperature2: getValue(`WetherStation${station.id_station_platform1 || station.id_station_platform}.PVmoduleTemp2`),
+            irradiation: getValue(`WetherStation${station.id_station_platform1 || station.id_station_platform}.Irradiation`),
+            excess_power: getValue(`ITN${station.id_station_platform}Common.ExcessPower`),
+            purchased_power: getValue(`ITN${station.id_station_platform}Common.PurchasedPower`),
+            excess_energy: 0, // Chưa có mapping
+            purchased_energy: 0, // Chưa có mapping
+            expected_power: 0, // Chưa có mapping
+            status: '', // Chưa có mapping
+            acb_status
         };
     }
 
     private async saveStationData(connection: mysql.Connection, stationId: number, data: any) {
-        const timestamp = new Date().toISOString().slice(0, 19).replace('T', ' ');
+        // Lấy timestamp theo múi giờ Việt Nam (UTC+7)
+        const timestamp = new Date().toLocaleString('en-US', { 
+            timeZone: 'Asia/Ho_Chi_Minh',
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: false
+        }).replace(/(\d+)\/(\d+)\/(\d+),\s(\d+):(\d+):(\d+)/, '$3-$1-$2 $4:$5:$6');
 
-        const values = {
-            station_id: stationId,
-            timestamp: timestamp,
-            power_active: data.power_active || 0,
-            power_reactive: data.power_reactive || 0,
-            energy: data.energy || 0,
-            pr: data.pr || 0,
-            ambient_temperature: data.ambient_temperature || 0,
-            pvmodule_temperature1: data.pvmodule_temperature1 || 0,
-            pvmodule_temperature2: data.pvmodule_temperature2 || 0,
-            irradiation: data.irradiation || 0,
-            excess_power: data.excess_power || 0,
-            purchased_power: data.purchased_power || 0,
-            excess_energy: data.excess_energy || 0,
-            purchased_energy: data.purchased_energy || 0
-        };
+        // Xóa dữ liệu cũ của station này (nếu có)
+        await connection.execute(
+            `DELETE FROM station_realtime WHERE station_id = ?`,
+            [stationId]
+        );
 
+        // Insert dữ liệu mới
         await connection.execute(
             `INSERT INTO station_realtime 
             (station_id, timestamp, power_active, power_reactive, energy, pr,
             ambient_temperature, pvmodule_temperature1, pvmodule_temperature2,
-            irradiation, excess_power, purchased_power, excess_energy, purchased_energy)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            irradiation, excess_power, purchased_power, excess_energy, purchased_energy,
+            expected_power, status, acb_status)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
-                values.station_id,
-                values.timestamp,
-                values.power_active,
-                values.power_reactive,
-                values.energy,
-                values.pr,
-                values.ambient_temperature,
-                values.pvmodule_temperature1,
-                values.pvmodule_temperature2,
-                values.irradiation,
-                values.excess_power,
-                values.purchased_power,
-                values.excess_energy,
-                values.purchased_energy
+                stationId,
+                timestamp,
+                data.power_active,
+                data.power_reactive,
+                data.energy,
+                data.pr,
+                data.ambient_temperature,
+                data.pvmodule_temperature1,
+                data.pvmodule_temperature2,
+                data.irradiation,
+                data.excess_power,
+                data.purchased_power,
+                data.excess_energy,
+                data.purchased_energy,
+                data.expected_power,
+                data.status,
+                data.acb_status
             ]
         );
 
-        console.log(`✅ Đã lưu dữ liệu realtime cho station ${stationId}`);
+        console.log(`✅ Đã cập nhật dữ liệu realtime cho station ${stationId}`);
     }
 
     private async fetchAndSaveInverterData(connection: mysql.Connection, station: Station) {
@@ -264,19 +306,30 @@ class ScadaService {
 
             for (const inverter of inverters as any[]) {
                 try {
-                    // Lấy inverter id số để tạo tag, giả sử inverter_id_platform kiểu 'Inverter1' => lấy số 1
-                    const inverterIdMatch = inverter.inverter_id_platform.match(/\d+$/);
-                    const inverterId = inverterIdMatch ? inverterIdMatch[0] : '';
-
                     const stationIdPlatform = station.id_station_platform;
 
-                    console.log(`\n⚡ Đang xử lý inverter: ${inverter.inverter_id_platform}`);
+                    // Lấy danh sách MPPT của inverter
+                    const [mppts] = await connection.execute(
+                        'SELECT id, mppt_platform_id FROM MPPT WHERE inverter_id = ?',
+                        [inverter.id]
+                    );
 
-                    // Các tag cần lấy dữ liệu
+                    console.log(`\n⚡ Đang xử lý inverter: ${inverter.inverter_id_platform} với ${(mppts as any[]).length} MPPTs`);
+
+                    // Tạo danh sách tag cho tất cả MPPT
+                    const mpptTags: string[] = [];
+                    for (const mppt of mppts as any[]) {
+                        const mpptBase = `${stationIdPlatform}${inverter.inverter_id_platform}.${mppt.mppt_platform_id}`;
+                        mpptTags.push(`${mpptBase}Voltage`);
+                        mpptTags.push(`${mpptBase}Current`);
+                    }
+
+                    // Thêm các tag MPPT vào danh sách request
                     const requestData = [
+                        ...mpptTags,
                         `${stationIdPlatform}${inverter.inverter_id_platform}.OutputActivePower`,
                         `${stationIdPlatform}${inverter.inverter_id_platform}.OutputReactivePower`,
-                        `ITN${stationIdPlatform}Energy.DailyEnergyINV${inverterId}`,
+                        `ITN${stationIdPlatform}Energy.DailyEnergyINV${inverter.inverter_id_platform.match(/\d+$/)[0]}`,
                         `${stationIdPlatform}${inverter.inverter_id_platform}.InverterTemperature`,
                         `${stationIdPlatform}${inverter.inverter_id_platform}.DCPower`,
                         `${stationIdPlatform}${inverter.inverter_id_platform}.GridVoltageA`,
@@ -301,14 +354,75 @@ class ScadaService {
                         return this.parseScadaValue(point.Value);
                     };
 
-                    const timestamp = new Date().toISOString().slice(0, 19).replace('T', ' ');
+                    // Xử lý dữ liệu MPPT
+                    for (const mppt of mppts as any[]) {
+                        const mpptBase = `${stationIdPlatform}${inverter.inverter_id_platform}.${mppt.mppt_platform_id}`;
+                        
+                        const voltagePoint = response.Result.find(p => p.Name === `${mpptBase}Voltage`);
+                        const currentPoint = response.Result.find(p => p.Name === `${mpptBase}Current`);
 
+                        if (voltagePoint && currentPoint) {
+                            const voltage = this.parseScadaValue(voltagePoint.Value);
+                            const current = this.parseScadaValue(currentPoint.Value);
+                            const status = voltagePoint.Status === 'Good' && currentPoint.Status === 'Good' ? 'Good' : 'Bad';
+
+                            // Cập nhật dữ liệu MPPT
+                            await connection.execute(
+                                `UPDATE MPPT 
+                                SET voltage = ?, 
+                                    current = ?, 
+                                    status = ?,
+                                    timestamp = ?
+                                WHERE id = ?`,
+                                [
+                                    voltage,
+                                    current,
+                                    status,
+                                    new Date().toLocaleString('en-US', { 
+                                        timeZone: 'Asia/Ho_Chi_Minh',
+                                        year: 'numeric',
+                                        month: '2-digit',
+                                        day: '2-digit',
+                                        hour: '2-digit',
+                                        minute: '2-digit',
+                                        second: '2-digit',
+                                        hour12: false
+                                    }).replace(/(\d+)\/(\d+)\/(\d+),\s(\d+):(\d+):(\d+)/, '$3-$1-$2 $4:$5:$6'),
+                                    mppt.id
+                                ]
+                            );
+
+                            console.log(`✅ Đã cập nhật dữ liệu cho MPPT ${mppt.mppt_platform_id}`);
+                        } else {
+                            console.log(`⚠️ Không tìm thấy dữ liệu cho MPPT ${mppt.mppt_platform_id}`);
+                        }
+                    }
+
+                    // Lấy timestamp theo múi giờ Việt Nam (UTC+7)
+                    const timestamp = new Date().toLocaleString('en-US', { 
+                        timeZone: 'Asia/Ho_Chi_Minh',
+                        year: 'numeric',
+                        month: '2-digit',
+                        day: '2-digit',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        second: '2-digit',
+                        hour12: false
+                    }).replace(/(\d+)\/(\d+)\/(\d+),\s(\d+):(\d+):(\d+)/, '$3-$1-$2 $4:$5:$6');
+
+                    // Xóa dữ liệu cũ của inverter này (nếu có)
+                    await connection.execute(
+                        `DELETE FROM inverter_realtime WHERE inverter_id = ?`,
+                        [inverter.id]
+                    );
+
+                    // Chuẩn bị dữ liệu inverter
                     const inverterData = {
                         inverter_id: inverter.id,
                         timestamp: timestamp,
                         power_active: getValue(`${stationIdPlatform}${inverter.inverter_id_platform}.OutputActivePower`),
                         power_reactive: getValue(`${stationIdPlatform}${inverter.inverter_id_platform}.OutputReactivePower`),
-                        energy: getValue(`ITN${stationIdPlatform}Energy.DailyEnergyINV${inverterId}`),
+                        energy: getValue(`ITN${stationIdPlatform}Energy.DailyEnergyINV${inverter.inverter_id_platform.match(/\d+$/)[0]}`),
                         pr: 0,
                         temperature: getValue(`${stationIdPlatform}${inverter.inverter_id_platform}.InverterTemperature`),
                         dc_power: getValue(`${stationIdPlatform}${inverter.inverter_id_platform}.DCPower`),
@@ -320,30 +434,15 @@ class ScadaService {
                         grid_current_c: getValue(`${stationIdPlatform}${inverter.inverter_id_platform}.GridCurrentC`)
                     };
 
-                    console.log('💾 Dữ liệu sẽ lưu:', inverterData);
+                    console.log('💾 Dữ liệu inverter sẽ lưu:', inverterData);
 
-                    // Sử dụng INSERT ... ON DUPLICATE KEY UPDATE để ghi đè bản ghi inverter_id
+                    // Insert dữ liệu mới
                     await connection.execute(
                         `INSERT INTO inverter_realtime 
                         (inverter_id, timestamp, power_active, power_reactive, energy, pr, 
                         temperature, dc_power, grid_voltage_a, grid_voltage_b, grid_voltage_c,
                         grid_current_a, grid_current_b, grid_current_c)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                        ON DUPLICATE KEY UPDATE
-                        timestamp = VALUES(timestamp),
-                        power_active = VALUES(power_active),
-                        power_reactive = VALUES(power_reactive),
-                        energy = VALUES(energy),
-                        pr = VALUES(pr),
-                        temperature = VALUES(temperature),
-                        dc_power = VALUES(dc_power),
-                        grid_voltage_a = VALUES(grid_voltage_a),
-                        grid_voltage_b = VALUES(grid_voltage_b),
-                        grid_voltage_c = VALUES(grid_voltage_c),
-                        grid_current_a = VALUES(grid_current_a),
-                        grid_current_b = VALUES(grid_current_b),
-                        grid_current_c = VALUES(grid_current_c)
-                        `,
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
                         [
                             inverterData.inverter_id,
                             inverterData.timestamp,
